@@ -21,6 +21,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+
     await client.connect();
     const db = client.db("creawin");
     const userCollections = db.collection("users");
@@ -28,29 +29,66 @@ async function run() {
     // users
     app.post("/add-user", async (req, res) => {
       try {
-        const userData = req.body;
-        userData.role = "user";
-        userData.createdAt = new Date();
-        const existingUser = await userCollections.findOne({
-          email: userData.email,
-        });
-        
+        const { uid, name, email, photo } = req.body;
+        if (!uid || !name || !email) {
+            return res.status(200).send({
+              message: "Required fields are missing",
+            });
+        }
+        const existingUser = await userCollections.findOne({ $or: [{ email }, { uid }] });
         if (existingUser) {
-          return res.send({
-            message: "User already exists",
+          return res.status(200).send({
             inserted: false,
+            message: "User already exists",
           });
         }
-
-        const result = await userCollections.insertOne(userData);
-
-        res.send({
+        const newUser = {
+          uid,
+          name,
+          email,
+          photo,
+          role: "user",
+          bio: "",
+          address: "",
+          createdAt: new Date(),
+          lastLogin: new Date(),
+        };
+        const result = await userCollections.insertOne(newUser);
+        res.status(200).send({
           inserted: true,
-          result,
+          insertedId: result.insertedId,
+          message: "User created successfully",
         });
-
       } catch (error) {
-        res.status(500).send(error);
+        res.status(500).send({
+          message: "Internal Server Error",
+        });
+      }
+    });
+
+    // get_user_role
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      try {
+        const user = await userCollections.findOne({ email });
+        if (!user) {
+          return res.status(404).send({
+            found: false,
+            message: "User not found!",
+            data: {} 
+          });
+        }
+        return res.status(200).send({
+          found: true,
+          data: user
+        });
+      
+      } catch (error) {
+        return res.status(500).send({
+          found: false,
+          message: error.message,
+          data: {}
+        });
       }
     });
     
