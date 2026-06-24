@@ -68,6 +68,7 @@ async function run() {
 
     // get_user_role
     app.get("/user/:email", async (req, res) => {
+      console.log("TRIGGERED")
       const email = req.params.email;
       try {
         const user = await userCollections.findOne({ email });
@@ -78,6 +79,7 @@ async function run() {
             data: {} 
           });
         }
+        // console.log(user);
         return res.status(200).send({
           found: true,
           data: user
